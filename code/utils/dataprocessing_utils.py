@@ -66,6 +66,36 @@ def map_stress_fbk_questionnaire_answer(level):
     elif level < 3:
         return int(1)
 
+def find_stress_distribution(x, level):
+    try:
+        return x.value_counts().loc[level]/x.count()*100
+    except:
+        return 0
+    
+def parse_fbk_feature(row, feature):
+    answers = json.loads(row)
+
+    if feature == 'stress':
+        key = 'what_is_your_stress_level'
+    elif feature == 'sleep':
+        key = 'how_did_you_sleep_tonight'
+    elif feature == 'effort':
+        key = 'It_takes_me_effort'
+    elif feature == 'job_control':
+        key = 'I_would_rather_do_something_else'
+    elif feature == 'job_fit':
+        key = 'This_is_something_I_am_good_at'
+    elif feature == 'job_satisfaction':
+        key = 'my_current_activity'
+        
+    try:
+        return int(re.search('Rating: (.*) out of 5', answers[key]).group(1))
+    except:
+        return float('nan')
+    
+
+
+
 # Parses a row of the questionnaire answers and returns the mapped answers 
 def parse_fbk_answers(row):
     answers = json.loads(row)
@@ -87,27 +117,6 @@ def parse_fbk_answers(row):
     something_good = re.search('Rating: (.*) out of 5', answers['This_is_something_I_am_good_at']).group(1)
     something_else = re.search('Rating: (.*) out of 5', answers['I_would_rather_do_something_else']).group(1)
     return stress, sleep, something_good, something_else, effective, effort, current_activity, energetic
-
-# Receives a dataframe with data specified in 1 second intervals and converts it to minute intervals
-def convert_to_minutely(df):
-    df.index = pd.to_datetime(df.index)
-    df.sort_index(inplace=True)
-    df['date'] = df.index
-    df['day'] = df['date'].dt.floor('T')
-    df.set_index('day', inplace=True)
-    #df.drop(['date'], axis = 1, inplace=True)
-    #df = df[~df.index.duplicated(keep='last')]
-    return df
-
-# Receives a dataframe with data specified in 1 minute intervals and converts it to hourly intervals
-def convert_to_hourly(df):
-    df.index = pd.to_datetime(df.index)
-    df.sort_index(inplace=True)
-    df['date'] = df.index
-    df['date'] = df['date'].dt.floor('H')
-    df.set_index('date', inplace=True)
-    df = df[~df.index.duplicated(keep='last')]
-    return df
 
 # loads the data and drops the unused columns
 def load_sl_data_and_drop_unused(data, additional_columns_to_del=[]):
@@ -167,7 +176,7 @@ def get_sl_sleep_data(data):
         return None
     data = sl_set_date_index(data)
     data['sleep_hours'] = data['hour']
-    data['sleep_rate'] =  data.apply(lambda x: map_questionnaire_answer(x['rate'], 'studentlife', 'sleep_rate'), axis=1) # data['rate'] # inversa
+    data['sleep_rate'] =   data.apply(lambda x: map_questionnaire_answer(x['rate'], 'studentlife', 'sleep_rate'), axis=1)# data['rate'] # inversa
     data.drop(['resp_time', 'hour', 'rate'], axis = 1, inplace=True, errors='ignore')
     return data
 
